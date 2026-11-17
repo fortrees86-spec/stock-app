@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>재고조회</title>
+  <meta name="theme-color" content="#2563eb">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="재고조회">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <style>
+    :root {
+      --bg: #f5f6f8; --card: #ffffff; --text: #1d2129; --muted: #6b7280;
+      --line: #e5e7eb; --accent: #2563eb; --accent-soft: #e8efff; --warn: #b45309;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; background: var(--bg); color: var(--text); }
+    body {
+      font-family: -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif;
+      -webkit-text-size-adjust: 100%;
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+    header {
+      position: sticky; top: 0; z-index: 2; background: var(--bg);
+      padding: calc(12px + env(safe-area-inset-top)) 14px 10px; border-bottom: 1px solid var(--line);
+    }
+    .top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+    h1 { font-size: 19px; margin: 0; }
+    .link { background: none; border: 0; color: var(--muted); font-size: 13px; padding: 6px 0; }
+    .tabs { display: flex; gap: 6px; margin-bottom: 10px; }
+    .tabs button {
+      flex: 1; padding: 12px 0; font-size: 16px; border-radius: 10px;
+      border: 1px solid var(--line); background: var(--card); color: var(--text);
+    }
+    .tabs button.on { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+    input {
+      width: 100%; padding: 13px 12px; font-size: 17px; border-radius: 10px;
+      border: 1px solid var(--line); background: var(--card); outline: none; color: var(--text);
+    }
+    input:focus { border-color: var(--accent); }
+    .meta { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted); margin-top: 8px; min-height: 18px; }
+    main { padding: 10px 14px 40px; }
+    .card {
+      background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+      padding: 12px 14px; margin-bottom: 8px;
+      display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; align-items: center;
+    }
+    .part { font-size: 16px; font-weight: 600; word-break: break-all; }
+    .spec { font-size: 14px; color: var(--muted); word-break: break-all; }
+    .stock { grid-row: 1 / span 2; grid-column: 2; text-align: right; }
+    .stock b { display: block; font-size: 21px; font-variant-numeric: tabular-nums; }
+    .stock span { font-size: 12px; color: var(--muted); }
+    .msg { text-align: center; color: var(--muted); padding: 30px 10px; font-size: 15px; line-height: 1.6; }
+    .warn { color: var(--warn); }
+    .center { max-width: 380px; margin: 0 auto; padding: calc(60px + env(safe-area-inset-top)) 18px 20px; text-align: center; }
+    .center img { width: 84px; height: 84px; border-radius: 20px; }
+    .center p { color: var(--muted); }
+    .btn {
+      width: 100%; margin-top: 10px; padding: 13px; font-size: 16px; border: 0;
+      border-radius: 10px; background: var(--accent); color: #fff;
+    }
+    .install {
+      display: none; margin: 10px 14px 0; padding: 12px 14px; border-radius: 12px;
+      background: var(--accent-soft); color: var(--text); font-size: 14px; line-height: 1.5;
+    }
+    .install button { margin-top: 8px; }
+    mark { background: var(--accent-soft); color: inherit; border-radius: 3px; }
+  </style>
+</head>
+<body>
+  <div id="pinView" class="center" style="display:none">
+    <img src="icons/icon-192.png" alt="">
+    <h1 style="margin-top:14px">재고조회</h1>
+    <p>팀 PIN을 입력하세요</p>
+    <input id="pinInput" type="password" inputmode="numeric" autocomplete="off" placeholder="PIN">
+    <button id="pinBtn" class="btn">확인</button>
+    <div id="pinMsg" class="msg warn" style="padding:12px 0"></div>
+  </div>
+
+  <div id="appView" style="display:none">
+    <header>
+      <div class="top">
+        <h1>창고 재고 조회</h1>
+        <button class="link" id="logout">PIN 다시 입력</button>
+      </div>
+      <div class="tabs" id="tabs">
+        <button data-cat="제품" class="on">제품</button>
+        <button data-cat="부자재">부자재</button>
+        <button data-cat="원자재">원자재</button>
+      </div>
+      <input id="q" type="search" placeholder="품번 또는 TM-NO 일부 입력" autocomplete="off" autocapitalize="characters" enterkeyhint="search">
+      <div class="meta"><span id="count"></span><span id="updated"></span></div>
+    </header>
+    <div class="install" id="installBox">
+      <div id="installText"></div>
+      <button class="btn" id="installBtn" style="display:none">앱 설치</button>
+    </div>
+    <main id="list"><div class="msg">품번이나 TM-NO를 2글자 이상 입력하세요</div></main>
+  </div>
+
+<script src="config.js"></script>
+<script>
+  var API = (window.STOCK_API_URL || "").trim();
+  var state = { pin: "", cat: "제품", seq: 0, timer: null };
+  var deferredPrompt = null;
+
+  function store(key, value) {
+    try {
+      if (value === undefined) return localStorage.getItem(key);
+      if (value === null) localStorage.removeItem(key); else localStorage.setItem(key, value);
+    } catch (e) { return null; }
+  }
+  function el(id) { return document.getElementById(id); }
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+  // 서버와 같은 규칙: 대소문자·공백 무시, 영문 I=숫자 1, 영문 O=숫자 0
+  function norm(s) {
+    return String(s).toUpperCase().replace(/\s+/g, "").replace(/I/g, "1").replace(/O/g, "0");
+  }
+  function highlight(text, q) {
+    var t = esc(text);
+    if (!q || /\s/.test(text)) return t;
+    var i = norm(text).indexOf(q);
+    if (i < 0) return t;
+    return esc(text.slice(0, i)) + "<mark>" + esc(text.slice(i, i + q.length)) + "</mark>" + esc(text.slice(i + q.length));
+  }
+
+  // ---------- 서버 호출 ----------
+  function call(payload) {
+    if (!API) return Promise.reject(new Error("앱 설정(config.js)에 데이터 주소가 없습니다. 관리자에게 알려 주세요."));
+    return fetch(API, { method: "POST", body: JSON.stringify(payload) })   // text/plain → 사전 확인 없음
+      .then(function (r) {
+        if (!r.ok) throw new Error("서버 응답 오류 (" + r.status + ")");
+        return r.json();
+      })
+      .then(function (data) {
+        if (!data.ok) throw new Error(data.error || "알 수 없는 오류");
+        return data;
+      }, function (err) {
+        if (err instanceof TypeError) throw new Error("인터넷 연결을 확인해 주세요.");
+        throw err;
+      });
+  }
+
+  // ---------- PIN ----------
+  function showPin(message) {
+    el("appView").style.display = "none";
+    el("pinView").style.display = "block";
+    el("pinMsg").textContent = message || "";
+    el("pinInput").value = "";
+    el("pinInput").focus();
+  }
+  function showApp() {
+    el("pinView").style.display = "none";
+    el("appView").style.display = "block";
+    updateInstallBox();
+  }
+  function submitPin() {
+    var pin = el("pinInput").value.trim();
+    if (!pin) return;
+    el("pinMsg").textContent = "확인 중...";
+    el("pinBtn").disabled = true;
+    call({ action: "verify", pin: pin })
+      .then(function () { state.pin = pin; store("stockPin", pin); showApp(); el("q").focus(); })
+      .catch(function (err) { el("pinMsg").textContent = err.message; })
+      .then(function () { el("pinBtn").disabled = false; });
+  }
+  el("pinBtn").addEventListener("click", submitPin);
+  el("pinInput").addEventListener("keydown", function (e) { if (e.key === "Enter") submitPin(); });
+  el("logout").addEventListener("click", function () { store("stockPin", null); state.pin = ""; showPin(); });
+
+  // ---------- 검색 ----------
+  function runSearch() {
+    var raw = el("q").value;
+    var q = norm(raw);
+    if (q.length < 2) {
+      el("list").innerHTML = '<div class="msg">품번이나 TM-NO를 2글자 이상 입력하세요</div>';
+      el("count").textContent = "";
+      return;
+    }
+    var mySeq = ++state.seq;
+    el("count").textContent = "검색 중...";
+    call({ action: "search", pin: state.pin, category: state.cat, query: raw })
+      .then(function (res) { if (mySeq === state.seq) render(res, q); })
+      .catch(function (err) {
+        if (mySeq !== state.seq) return;
+        if (/PIN/.test(err.message)) { store("stockPin", null); showPin(err.message); return; }
+        el("count").textContent = "";
+        el("list").innerHTML = '<div class="msg warn">' + esc(err.message) + "</div>";
+      });
+  }
+  function render(res, q) {
+    el("updated").textContent = res.updated ? res.updated + " 기준" : "업데이트 시각 없음";
+    el("count").textContent = res.total ? res.total + "건" + (res.limited ? " (앞 " + res.rows.length + "건 표시)" : "") : "";
+    if (!res.rows.length) {
+      el("list").innerHTML = '<div class="msg">검색 결과가 없습니다</div>';
+      return;
+    }
+    var html = res.rows.map(function (r) {
+      return '<div class="card">' +
+        '<div class="part">' + highlight(r.partNo, q) + "</div>" +
+        '<div class="stock"><span>재고</span><b>' + esc(r.stock) + "</b></div>" +
+        '<div class="spec">TM-NO ' + (r.spec ? highlight(r.spec, q) : "-") + "</div>" +
+        "</div>";
+    }).join("");
+    if (res.limited) html += '<div class="msg">결과가 많습니다. 더 길게 입력해 좁혀 주세요.</div>';
+    el("list").innerHTML = html;
+  }
+  el("q").addEventListener("input", function () {
+    clearTimeout(state.timer);
+    state.timer = setTimeout(runSearch, 400);
+  });
+  el("q").addEventListener("keydown", function (e) {
+    if (e.key === "Enter") { clearTimeout(state.timer); runSearch(); e.target.blur(); }
+  });
+  el("tabs").addEventListener("click", function (e) {
+    var b = e.target.closest("button");
+    if (!b) return;
+    state.cat = b.getAttribute("data-cat");
+    Array.prototype.forEach.call(el("tabs").children, function (x) { x.classList.toggle("on", x === b); });
+    store("stockCat", state.cat);
+    runSearch();
+  });
+
+  // ---------- 설치 안내 ----------
+  function isStandalone() {
+    return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+  }
+  function isIOS() { return /iphone|ipad|ipod/i.test(navigator.userAgent); }
+  function updateInstallBox() {
+    var box = el("installBox");
+    if (isStandalone() || store("installHidden") === "1") { box.style.display = "none"; return; }
+    if (deferredPrompt) {
+      el("installText").textContent = "휴대폰에 앱으로 설치하면 다음부터 아이콘으로 바로 열 수 있어요.";
+      el("installBtn").style.display = "block";
+      box.style.display = "block";
+    } else if (isIOS()) {
+      el("installText").innerHTML = "앱으로 설치하려면 사파리 아래 <b>공유 버튼(□↑)</b> → <b>홈 화면에 추가</b>를 누르세요.";
+      el("installBtn").style.display = "none";
+      box.style.display = "block";
+    } else {
+      box.style.display = "none";
+    }
+  }
+  window.addEventListener("beforeinstallprompt", function (e) {
+    e.preventDefault();
+    deferredPrompt = e;
+    updateInstallBox();
+  });
+  el("installBtn").addEventListener("click", function () {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.then(function () { deferredPrompt = null; updateInstallBox(); });
+  });
+  window.addEventListener("appinstalled", function () { store("installHidden", "1"); updateInstallBox(); });
+
+  // ---------- 시작 ----------
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", function () { navigator.serviceWorker.register("sw.js").catch(function () {}); });
+  }
+  (function init() {
+    var cat = store("stockCat");
+    if (cat) {
+      Array.prototype.forEach.call(el("tabs").children, function (x) {
+        var on = x.getAttribute("data-cat") === cat;
+        x.classList.toggle("on", on);
+        if (on) state.cat = cat;
+      });
+    }
+    var saved = store("stockPin");
+    if (saved) { state.pin = saved; showApp(); } else { showPin(); }
+  })();
+</script>
+</body>
+</html>
